@@ -1,0 +1,105 @@
+*******************************************************************************/
+#include <Wire.h>
+#include "DS1307.h"
+#include "TM1637.h"
+#include <IRremote.h>
+#include <Digital_Light_TSL2561.h>
+
+IRsend irsend;
+#define ON 1
+#define OFF 0
+#define WAIT 10
+
+int8_t TimeDisp[] = {0x00,0x00,0x00,0x00};
+
+#define CLK 5    
+#define DIO 6
+TM1637 tm1637(CLK,DIO);
+DS1307 clock;//define a object of DS1307 class
+int atnoon = 0;
+int poweronsended = 0;
+int Lux;
+
+void setup()
+{
+  Serial.begin(9600);
+  TSL2561.init(); 
+  delay(100);
+  tm1637.set();
+  tm1637.init();
+  clock.begin();
+  clock.fillByYMD(2013,1,19);//Jan 19,2013
+  clock.fillByHMS(11,59,30);//15:28 30"
+  clock.fillDayOfWeek(SAT);//Saturday
+  clock.setTime();//write time to the RTC chip
+}
+void loop()
+{    
+    clock.getTime();
+    TimeUpdate();
+    tm1637.display(TimeDisp);
+    if ((AtNoon() == 1) && (poweronsended == 0)) {
+      SendSonyOn();
+      poweronsended = 1;
+      Serial.println("PowerOn");
+      tm1637.point(POINT_ON);
+    }
+    if ((AtNoon() == 1) && (readLight() == 1)) {
+      SendSonyOn();
+      poweronsended = 1;
+      Serial.println("PowerOn");
+      tm1637.point(POINT_ON);
+    }    
+    if ((AfterNoon() == 1) && (poweronsended == 1))  {
+      poweronsended = 0;
+      Serial.println("AfterNoon");
+      tm1637.point(POINT_OFF);
+    }
+    delay(1000*WAIT); 
+}
+
+void TimeUpdate(void)
+{
+  TimeDisp[0] = clock.hour / 10;
+  TimeDisp[1] = clock.hour % 10;
+  TimeDisp[2] = clock.minute / 10;
+  TimeDisp[3] = clock.minute % 10;
+}
+
+int AtNoon(void)
+{
+  if ((clock.hour == 12) && (clock.minute >= 0) && (clock.minute < 10)) {
+    return 1;
+  } else {
+    return 0;
+  }
+}
+int AfterNoon(void)
+{
+  if ((clock.hour > 12)) {
+    return 1;
+  } else {
+    return 0;
+  }
+}
+void SendSonyOn(void)
+{
+    for (int i = 0; i < 3; i++) {
+      irsend.sendSony(0xa90, 12); // Sony TV power code
+      delay(40);
+    }
+}
+
+int readLight(void)
+{
+    TSL2561.init(); 
+    delay(100);
+    TSL2561.getLux();
+    Lux = TSL2561.calculateLux(0,0,1);
+    Serial.println(Lux);  
+    if ((Lux > 0) && (Lux < 1000)) {
+      return 1;
+    } else {
+      return 0;
+    }
+}
