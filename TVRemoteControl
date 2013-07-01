@@ -1,9 +1,53 @@
-*******************************************************************************/
+//  Author:Frankie.Chu
+//  Date:9 April,2012
+//
+//  This library is free software; you can redistribute it and/or
+//  modify it under the terms of the GNU Lesser General Public
+//  License as published by the Free Software Foundation; either
+//  version 2.1 of the License, or (at your option) any later version.
+//
+//  This library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+//  Lesser General Public License for more details.
+//
+//  You should have received a copy of the GNU Lesser General Public
+//  License along with this library; if not, write to the Free Software
+//  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+//
+//  Modified record:
+//
+/*******************************************************************************/
 #include <Wire.h>
 #include "DS1307.h"
 #include "TM1637.h"
 #include <IRremote.h>
 #include <Digital_Light_TSL2561.h>
+
+//SONY LCD TV RM-CD001
+#define KEY_1 0x010
+#define KEY_2 0x810
+#define KEY_3 0x410
+#define KEY_4 0xC10
+#define KEY_5 0x210
+#define KEY_6 0xA10
+#define KEY_7 0x610
+#define KEY_8 0xE10
+#define KEY_9 0x110
+#define KEY_0 0x910
+
+#define KEY_ENTER 0xD10
+#define KEY_TV_VOLUMEUP 0x490
+#define KEY_TV_VOLUMEDOWN 0xC90
+#define KEY_TV_POWER 0xA90
+
+#define KEY_TUNER 0x250
+#define KEY_VIDEO1 0x030
+#define KEY_VIDEO2 0x830
+#define KEY_VIDEO3 0x430
+#define KEY_VIDEO4 0xE30
+#define KEY_VIDEO5 0x130
+#define KEY_VIDEO6 0x930
 
 IRsend irsend;
 #define ON 1
@@ -28,10 +72,12 @@ void setup()
   tm1637.set();
   tm1637.init();
   clock.begin();
-  clock.fillByYMD(2013,1,19);//Jan 19,2013
-  clock.fillByHMS(11,59,30);//15:28 30"
-  clock.fillDayOfWeek(SAT);//Saturday
-  clock.setTime();//write time to the RTC chip
+  //clock.fillByYMD(2013,6,25);//Jan 19,2013
+  //clock.fillByHMS(19,39,30);//15:28 30"
+  //clock.fillDayOfWeek(SAT);//Saturday
+  //clock.setTime();//write time to the RTC chip
+  //delay(1000);
+  //SendSonyOn();
 }
 void loop()
 {    
@@ -44,10 +90,10 @@ void loop()
       Serial.println("PowerOn");
       tm1637.point(POINT_ON);
     }
-    if ((AtNoon() == 1) && (readLight() == 1)) {
-      SendSonyOn();
+    if ((AtNoon() == 1) && (readLight() == 1) && (poweronsended == 1)) {
+      SendSonyDVD();
       poweronsended = 1;
-      Serial.println("PowerOn");
+      Serial.println("Active DVD");
       tm1637.point(POINT_ON);
     }    
     if ((AfterNoon() == 1) && (poweronsended == 1))  {
@@ -68,6 +114,7 @@ void TimeUpdate(void)
 
 int AtNoon(void)
 {
+  //return 1;
   if ((clock.hour == 12) && (clock.minute >= 0) && (clock.minute < 10)) {
     return 1;
   } else {
@@ -82,12 +129,84 @@ int AfterNoon(void)
     return 0;
   }
 }
+
+void SendSonyDVD()
+{
+    for (int i = 0; i < 3; i++) {
+      irsend.sendSony(KEY_VIDEO1, 12); // Sony TV power code
+      delay(40);
+    }  
+}
 void SendSonyOn(void)
 {
     for (int i = 0; i < 3; i++) {
-      irsend.sendSony(0xa90, 12); // Sony TV power code
+      irsend.sendSony(KEY_TV_POWER, 12); // Sony TV power code
       delay(40);
     }
+    //Wait Until TV is On
+    delay(5000);
+    
+    for (int i = 0; i < 3; i++) {
+      SendSonyKey(7);
+      delay(40);
+    }    
+    delay(1000);
+    for (int i = 0; i < 3; i++) {
+      SendSonyKey(5);
+      delay(40);
+    }  
+    delay(1000);
+    for (int i = 0; i < 3; i++) {
+      irsend.sendSony(KEY_ENTER, 12); // Sony TV power code
+      delay(40);
+    }    
+}
+
+void SendSonyKey(int key)
+{
+  switch(key)
+  {
+    case 0:
+      irsend.sendSony(KEY_0,12);
+      Serial.println("0");
+      break;
+    case 1:
+      irsend.sendSony(KEY_1,12);
+      Serial.println("1");
+      break;
+    case 2:
+      irsend.sendSony(KEY_2,12);
+      Serial.println("2");
+      break;
+    case 3:
+      irsend.sendSony(KEY_3,12);
+      Serial.println("3");
+      break;
+    case 4:
+      irsend.sendSony(KEY_4,12);
+      Serial.println("4");
+      break;
+    case 5:
+      irsend.sendSony(KEY_5,12);
+      Serial.println("5");
+      break;
+    case 6:
+      irsend.sendSony(KEY_6,12);
+      Serial.println("6");
+      break;
+    case 7:
+      irsend.sendSony(KEY_7,12);
+      Serial.println("7");
+      break;
+    case 8:
+      irsend.sendSony(KEY_8,12);
+      Serial.println("8");
+      break;
+    case 9:
+      irsend.sendSony(KEY_9,12);
+      Serial.println("9");
+      break;      
+  }
 }
 
 int readLight(void)
